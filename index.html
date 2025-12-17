@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GTA World Chat Log Generator</title>
+    <title>Screen Edit - Chat Log Generator</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tahoma:wght@400;700&display=swap');
 
@@ -296,6 +296,38 @@
         textColorPicker.addEventListener('input', updatePreview);
         bgToggle.addEventListener('change', updatePreview);
 
+        function getLineColor(line) {
+            // تحقق من كود اللون {RRGGBB}
+            const colorMatch = line.match(/^\{([0-9A-Fa-f]{6})\}/);
+            if (colorMatch) {
+                return '#' + colorMatch[1];
+            }
+            
+            // إزالة كود اللون للفحص
+            const cleanLine = line.replace(/^\{[0-9A-Fa-f]{6}\}/, '');
+            
+            // تحقق من الأنماط المختلفة
+            if (cleanLine.trim().startsWith('*')) {
+                return '#C2A2DA'; // emotes
+            }
+            if (cleanLine.toLowerCase().includes('[phone]')) {
+                return '#c8ffc8'; // phone
+            }
+            if (cleanLine.includes(' gives ') || 
+                cleanLine.includes(' gave ') || 
+                cleanLine.startsWith('You gave $') ||
+                cleanLine.includes(' gave you $')) {
+                return '#56d64b'; // transactions
+            }
+            
+            return textColorPicker.value; // default color
+        }
+
+        function cleanLineText(line) {
+            // إزالة كود اللون من النص
+            return line.replace(/^\{[0-9A-Fa-f]{6}\}/, '');
+        }
+
         function updatePreview() {
             const lines = textInput.value.split('\n');
             previewLines.innerHTML = '';
@@ -303,20 +335,13 @@
             lines.forEach(line => {
                 const lineDiv = document.createElement('div');
                 lineDiv.className = 'chat-line';
-                lineDiv.textContent = line || ' ';
-                lineDiv.style.fontSize = fontSize + 'px';
                 
-                // تحقق إذا السطر يبدأ بـ *
-                if (line.trim().startsWith('*')) {
-                    lineDiv.style.color = '#C2A2DA'; // لون بنفسجي للـ emotes
-                }
-                // تحقق إذا السطر فيه [Phone]
-                else if (line.toLowerCase().includes('[phone]')) {
-                    lineDiv.style.color = '#c8ffc8'; // لون أخضر فاتح للـ phone
-                }
-                else {
-                    lineDiv.style.color = textColorPicker.value;
-                }
+                const displayText = cleanLineText(line);
+                const textColor = getLineColor(line);
+                
+                lineDiv.textContent = displayText || ' ';
+                lineDiv.style.fontSize = fontSize + 'px';
+                lineDiv.style.color = textColor;
                 
                 if (bgToggle.checked) {
                     lineDiv.style.background = colorPicker.value;
@@ -364,57 +389,52 @@
                 return;
             }
             
-            // إعداد الخط
             ctx.font = `${fontSize}px Tahoma, Arial, sans-serif`;
             const lines = text.split('\n');
             const lineHeight = fontSize + 4;
             const paddingX = 4;
             const paddingY = 2;
             
-            // حساب أقصى عرض
+            // حساب العرض لكل سطر
             let maxWidth = 0;
-            const lineWidths = [];
+            const lineData = [];
+            
             lines.forEach(line => {
-                const lineText = line || ' ';
-                const width = ctx.measureText(lineText).width;
-                lineWidths.push(width);
+                const displayText = cleanLineText(line) || ' ';
+                const textColor = getLineColor(line);
+                const width = ctx.measureText(displayText).width;
+                
+                lineData.push({
+                    text: displayText,
+                    color: textColor,
+                    width: width
+                });
+                
                 if (width > maxWidth) maxWidth = width;
             });
             
-            // تحديد حجم الـ canvas
             canvas.width = maxWidth + (paddingX * 2) + 10;
             canvas.height = (lines.length * lineHeight) + 10;
             
-            // إعادة تعيين الخط بعد تغيير حجم canvas
             ctx.font = `${fontSize}px Tahoma, Arial, sans-serif`;
             ctx.textBaseline = 'top';
             
             let currentY = 5;
             
-            lines.forEach((line, index) => {
-                const lineText = line || ' ';
-                const lineWidth = lineWidths[index];
-                
+            lineData.forEach(data => {
                 // رسم خلفية السطر
                 if (!transparent && bgToggle.checked) {
                     ctx.fillStyle = colorPicker.value;
-                    ctx.fillRect(5, currentY, lineWidth + (paddingX * 2), lineHeight);
+                    ctx.fillRect(5, currentY, data.width + (paddingX * 2), lineHeight);
                 }
                 
-                // تحديد لون النص
-                if (line.trim().startsWith('*')) {
-                    ctx.fillStyle = '#C2A2DA'; // لون بنفسجي للـ emotes
-                } else if (line.toLowerCase().includes('[phone]')) {
-                    ctx.fillStyle = '#c8ffc8'; // لون أخضر فاتح للـ phone
-                } else {
-                    ctx.fillStyle = textColorPicker.value;
-                }
-                ctx.fillText(lineText, 5 + paddingX, currentY + paddingY);
+                // رسم النص
+                ctx.fillStyle = data.color;
+                ctx.fillText(data.text, 5 + paddingX, currentY + paddingY);
                 
                 currentY += lineHeight;
             });
             
-            // تحميل الصورة
             canvas.toBlob(function(blob) {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -425,7 +445,6 @@
             });
         }
 
-        // تحديث المعاينة عند التحميل
         updatePreview();
     </script>
 </body>

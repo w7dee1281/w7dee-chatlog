@@ -15,6 +15,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    direction: ltr; /* إضافة هذا السطر */
+    text-align: left; /* إضافة هذا السطر */
 }
 
 .logo {
@@ -120,6 +122,8 @@ body {
     border-radius: 8px;
     resize: vertical;
     margin-bottom: 20px;
+    direction: ltr; /* الكتابة من اليسار */
+    text-align: left; /* محاذاة لليسار */
 }
 
 #textInput:focus {
@@ -142,8 +146,10 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0;
-    align-items: flex-start;
+    align-items: flex-start; /* محاذاة لليسار */
     width: 100%;
+    direction: ltr; /* الكتابة من اليسار */
+    text-align: left; /* محاذاة لليسار */
 }
 
 .chat-line {
@@ -155,6 +161,7 @@ body {
     font-weight: normal;
     margin: 0;
     border-radius: 3px;
+    text-align: left; /* محاذاة لليسار */
 }
 
 #copyText {

@@ -103,11 +103,12 @@ body {
   max-width: 90vw;
 }
 
-.editor-box {
-  width: 800px;
-  max-width: 90vw;
-  position: relative;
+.editor-box{
+  width:900px;      /* ⬅️ زودنا العرض */
+  max-width:95vw;   /* ⬅️ استغلال أفضل للشاشة */
+  position:relative;
 }
+
 
 /* ✅ FIX: padding-top matches textarea padding-top (15px) */
 .line-select {

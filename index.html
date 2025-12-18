@@ -1,71 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Log Wizard - Screen Editor</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <meta name="description" content="GTA Chat Log Generator - Screen Editor Style">
-    <meta name="keywords" content="GTA, chat log, wizard, screen editor, chat generator">
-    <meta name="author" content=".1fu">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Log Wizard - Screen Editor</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <meta name="description" content="GTA Chat Log Generator - Screen Editor Style" />
+  <meta name="keywords" content="GTA, chat log, wizard, screen editor, chat generator" />
+  <meta name="author" content=".1fu" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <div class="logo">
-        <div class="logo-text">
-            <span class="gta-white">Chat Log</span><span class="gta-yellow">Wizard</span>
-        </div>
-        <div class="subtitle">GTA Screen-Style Chat Log Generator</div>
+  <div class="logo">
+    <div class="logo-text">
+      <span class="gta-white">Chat Log</span><span class="gta-yellow">Wizard</span>
+    </div>
+    <div class="subtitle">GTA Screen-Style Chat Log Generator</div>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Font Size:</label>
+      <div class="size-controls">
+        <button onclick="decreaseSize()">−</button>
+        <input type="text" id="sizeInput" value="13px" readonly />
+        <button onclick="increaseSize()">+</button>
+      </div>
     </div>
 
-    <div class="controls">
-        <div class="control-group">
-            <label>Font Size:</label>
-            <div class="size-controls">
-                <button onclick="decreaseSize()">−</button>
-                <input type="text" id="sizeInput" value="13px" readonly>
-                <button onclick="increaseSize()">+</button>
-            </div>
-        </div>
-
-        <div class="control-group">
-            <label>Background:</label>
-            <input type="color" id="colorPicker" class="color-picker" value="#000000">
-        </div>
-
-        <div class="control-group">
-            <label>Text:</label>
-            <input type="color" id="textColorPicker" class="color-picker" value="#ffffff">
-        </div>
-
-        <div class="control-group">
-            <label>
-                <input type="checkbox" id="bgToggle" checked style="width: 20px; height: 20px; cursor: pointer;">
-                Show Background
-            </label>
-        </div>
+    <div class="control-group">
+      <label>Font:</label>
+      <select id="fontSelect" class="font-select">
+        <option value="tahoma" selected>Tahoma (Default)</option>
+        <option value="roboto">Roboto</option>
+        <option value="cairo">Cairo</option>
+        <option value="tajawal">Tajawal</option>
+        <option value="poppins">Poppins</option>
+        <option value="montserrat">Montserrat</option>
+      </select>
     </div>
 
-    <textarea id="textInput" placeholder="Enter text here... Each line will appear separately"></textarea>
+    <div class="control-group">
+      <label>Background:</label>
+      <input type="color" id="colorPicker" class="color-picker" value="#000000" />
+    </div>
+
+    <div class="control-group">
+      <label>Text:</label>
+      <!-- ✅ صار Flex طبيعي عشان ما يغطي Show Background -->
+      <div class="color-picker-wrap">
+        <input type="color" id="textColorPicker" class="color-picker" value="#ffffff" />
+        <button id="saveColorBtn" class="save-in-picker" type="button">Save</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label class="bg-label">
+        <input type="checkbox" id="bgToggle" checked style="width: 20px; height: 20px; cursor: pointer;" />
+        Show Background
+      </label>
+    </div>
+  </div>
+
+  <div class="hint">
+    Tip: Select lines using the checkboxes INSIDE the textarea area, then pick a color and press Save.
+  </div>
+
+  <div class="chat-scope" id="chatScope">
+    <div class="editor-box">
+      <div class="line-select" id="lineSelect">
+        <div class="line-select-inner" id="lineSelectInner"></div>
+      </div>
+
+      <textarea id="textInput" placeholder="Enter text here... Each line will appear separately"></textarea>
+    </div>
 
     <div class="preview-container">
-        <div id="previewLines"></div>
+      <div id="previewLines"></div>
     </div>
+  </div>
 
-    <button id="copyText">Copy Text</button>
+  <button id="copyText">Copy Text</button>
 
-    <div class="download-buttons">
-        <button class="download-btn btn-transparent" onclick="downloadImage(true)">Download Transparent</button>
-        <button class="download-btn btn-filled" onclick="downloadImage(false)">Download With Background</button>
-    </div>
+  <div class="download-buttons">
+    <button class="download-btn btn-transparent" onclick="downloadImage(true)">Download Transparent</button>
+    <button class="download-btn btn-filled" onclick="downloadImage(false)">Download With Background</button>
+  </div>
 
-    <div class="contact-info">
-        <p>For support and bug reports: <strong>.1fu</strong> on Discord</p>
-        <p class="credit">Developed by: .1fu</p>
-    </div>
+  <div class="contact-info">
+    <p>For support and bug reports: <strong>&period;1fu</strong> on Discord</p>
+    <p class="credit">Developed by: W7dee</p>
+  </div>
 
-    <div class="copied-notification" id="notification">✓ Text copied!</div>
+  <div class="copied-notification" id="notification">✓ Text copied!</div>
 
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>

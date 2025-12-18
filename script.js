@@ -290,12 +290,28 @@ function downloadImage(transparent) {
   canvas.toBlob(function (blob) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+
+    const fileName =
+      'chatlog-' +
+      now.getFullYear() + '-' +
+      pad(now.getMonth() + 1) + '-' +
+      pad(now.getDate()) + '_' +
+      pad(now.getHours()) + '-' +
+      pad(now.getMinutes()) + '-' +
+      pad(now.getSeconds()) +
+      (transparent ? '-transparent' : '') +
+      '.png';
+
     a.href = url;
-    a.download = transparent ? 'chatlog-transparent.png' : 'chatlog.png';
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
   });
 }
+
 
 // init
 applyFont('tahoma');

@@ -105,7 +105,7 @@ You can force a base color by adding a hex code at the start of a line:
 ### 👤 Author
 
 Developed by **W7dee**  
-GTA RP tools & utilities developer.
+
 
 Discord: **.1fu**
 

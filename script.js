@@ -11,7 +11,7 @@ function getLineColor(line) {
     
     if (!line || line.length === 0) return defaultColor;
     
-    // كود اللون {XXXXXX}
+    // Color code {XXXXXX}
     if (line.length >= 8 && line[0] === '{' && line[7] === '}') {
         const colorCode = line.substring(1, 7);
         if (/^[0-9A-Fa-f]{6}$/.test(colorCode)) {
@@ -19,23 +19,23 @@ function getLineColor(line) {
         }
     }
     
-    // إزالة كود اللون
+    // Remove color code
     let cleanLine = line;
     if (line.length >= 8 && line[0] === '{' && line[7] === '}') {
         cleanLine = line.substring(8);
     }
     
-    // التحقق من الأنماط الجديدة: [RADIO]{XXXXXX} و whispers {XXXXXX} (بغض النظر عن حالة الأحرف)
-    const radioPattern = /\[radio\]\{([0-9a-f]{6})\}/i;
-    const radioMatch = radioPattern.exec(cleanLine);
-    if (radioMatch) {
-        return '#' + radioMatch[1];
+    // Check for [RADIO] and whispers (case insensitive)
+    const lowerLine = cleanLine.toLowerCase();
+    
+    // [RADIO] - Color: #FEE58F
+    if (lowerLine.includes('[radio]')) {
+        return '#FEE58F';
     }
     
-    const whispersPattern = /whispers\s*\{([0-9a-f]{6})\}/i;
-    const whispersMatch = whispersPattern.exec(cleanLine);
-    if (whispersMatch) {
-        return '#' + whispersMatch[1];
+    // whispers - Color: #eda841
+    if (lowerLine.includes('whispers')) {
+        return '#eda841';
     }
     
     const trimmed = cleanLine.trim();
@@ -43,14 +43,13 @@ function getLineColor(line) {
     
     const first = trimmed[0];
     
-    // النجم ✪ فقط لا يغير اللون (يتبع قواعد الألوان الأخرى)
-    // بينما * و ★ يغيران اللون إلى الأرجواني
+    // Only ✪ star doesn't change color (follows other color rules)
+    // While * and ★ change color to purple
     if (first === '*' || first === String.fromCharCode(0x2605)) return '#C2A2DA';
     
-    // إذا كان النجم ✪ في البداية، نتجاهله للتحقق من القواعد الأخرى
+    // If ✪ star is at the beginning, ignore it for other rule checks
     let lineForColorCheck = cleanLine;
     if (first === String.fromCharCode(0x272A)) {
-        // نزيل النجم ✪ من البداية للتحقق من القواعد الأخرى
         lineForColorCheck = cleanLine.substring(1).trim();
     }
     
@@ -87,7 +86,7 @@ function updatePreview() {
         const displayText = cleanLineText(line);
         const textColor = getLineColor(line);
         
-        // إذا السطر فاضي خليه فاضي بدون خلفية
+        // If line is empty, keep it empty without background
         if (!displayText.trim()) {
             lineDiv.innerHTML = '&nbsp;';
             lineDiv.style.background = 'transparent';
@@ -144,7 +143,7 @@ function downloadImage(transparent) {
     const text = textInput.value;
     
     if (!text.trim()) {
-        alert('الرجاء إدخال نص أولاً!');
+        alert('Please enter some text first!');
         return;
     }
     
@@ -183,7 +182,7 @@ function downloadImage(transparent) {
     for (let i = 0; i < lineData.length; i++) {
         const data = lineData[i];
         
-        // لا ترسم خلفية للأسطر الفاضية
+        // Don't draw background for empty lines
         if (data.text.trim() && !transparent && bgToggle.checked) {
             ctx.fillStyle = colorPicker.value;
             ctx.fillRect(5, currentY, data.width + (paddingX * 2), lineHeight);
@@ -205,5 +204,5 @@ function downloadImage(transparent) {
     });
 }
 
-// التهيئة الأولية
+// Initialization
 updatePreview();

@@ -120,8 +120,6 @@ body {
     border-radius: 8px;
     resize: vertical;
     margin-bottom: 20px;
-    text-align: right;
-    direction: rtl;
 }
 
 #textInput:focus {
@@ -145,8 +143,6 @@ body {
     flex-direction: column;
     gap: 0;
     align-items: flex-start;
-    text-align: right;
-    direction: rtl;
     width: 100%;
 }
 

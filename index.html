@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Log Wizard - محرر محادثات</title>
+    <title>Chat Log Wizard - Screen Editor</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <meta name="description" content="GTA Chat Log Generator - Screen Editor Style">
+    <meta name="keywords" content="GTA, chat log, wizard, screen editor, chat generator">
+    <meta name="author" content="1fu">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,12 +15,12 @@
         <div class="logo-text">
             <span class="gta-white">Chat Log</span><span class="gta-yellow">Wizard</span>
         </div>
-        <div class="subtitle">أداة إنشاء لقطات محادثات GTA</div>
+        <div class="subtitle">GTA Screen-Style Chat Log Generator</div>
     </div>
 
     <div class="controls">
         <div class="control-group">
-            <label>حجم الخط:</label>
+            <label>Font Size:</label>
             <div class="size-controls">
                 <button onclick="decreaseSize()">−</button>
                 <input type="text" id="sizeInput" value="13px" readonly>
@@ -25,44 +29,44 @@
         </div>
 
         <div class="control-group">
-            <label>خلفية:</label>
+            <label>Background:</label>
             <input type="color" id="colorPicker" class="color-picker" value="#000000">
         </div>
 
         <div class="control-group">
-            <label>نص:</label>
+            <label>Text:</label>
             <input type="color" id="textColorPicker" class="color-picker" value="#ffffff">
         </div>
 
         <div class="control-group">
             <label>
                 <input type="checkbox" id="bgToggle" checked style="width: 20px; height: 20px; cursor: pointer;">
-                إظهار الخلفية
+                Show Background
             </label>
         </div>
     </div>
 
-    <textarea id="textInput" placeholder="اكتب النص هنا... كل سطر سيظهر منفصلاً"></textarea>
+    <textarea id="textInput" placeholder="Enter text here... Each line will appear separately"></textarea>
 
     <div class="preview-container">
         <div id="previewLines"></div>
     </div>
 
-    <button id="copyText">نسخ النص</button>
+    <button id="copyText">Copy Text</button>
 
     <div class="download-buttons">
-        <button class="download-btn btn-transparent" onclick="downloadImage(true)">تحميل بشفافية</button>
-        <button class="download-btn btn-filled" onclick="downloadImage(false)">تحميل بخلفية</button>
+        <button class="download-btn btn-transparent" onclick="downloadImage(true)">Download Transparent</button>
+        <button class="download-btn btn-filled" onclick="downloadImage(false)">Download With Background</button>
     </div>
 
     <div class="contact-info">
-        <p>للتواصل والإبلاغ عن أخطاء: 
-            <a href="https://discord.com/users/1fu" target="_blank">1fu</a>
+        <p>For support and bug reports: 
+            <a href="https://discord.com/users/1fu" target="_blank" rel="noopener noreferrer">1fu on Discord</a>
         </p>
-        <p class="credit">تم التطوير بواسطة: 1fu</p>
+        <p class="credit">Developed by: 1fu</p>
     </div>
 
-    <div class="copied-notification" id="notification">✓ تم نسخ النص!</div>
+    <div class="copied-notification" id="notification">✓ Text copied!</div>
 
     <script src="script.js"></script>
 </body>

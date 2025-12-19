@@ -3,8 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat Log Wizard - Photo Compose</title>
+  <title>Chat Log Wizard - Photo Composer</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+  <!-- Google Fonts (used for chat only) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Inter:wght@400;700&family=Open+Sans:wght@400;700&family=Lato:wght@400;700&family=Nunito:wght@400;700&family=Raleway:wght@400;700&family=Oswald:wght@400;700&family=Ubuntu:wght@400;700&family=Fira+Sans:wght@400;700&family=Rubik:wght@400;700&family=Source+Sans+3:wght@400;700&family=Cairo:wght@400;700&family=Tajawal:wght@400;700&family=Noto+Sans+Arabic:wght@400;700&family=Noto+Kufi+Arabic:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&family=Poppins:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -19,14 +25,14 @@
     <div class="control-group">
       <label>Font Size:</label>
       <div class="size-controls">
-        <button onclick="decreaseSize()">−</button>
+        <button type="button" onclick="decreaseSize()">−</button>
         <input type="text" id="sizeInput" value="13px" readonly />
-        <button onclick="increaseSize()">+</button>
+        <button type="button" onclick="increaseSize()">+</button>
       </div>
     </div>
 
     <div class="control-group">
-      <label>Font:</label>
+      <label>Font (Image Only):</label>
       <select id="fontSelect" class="font-select">
         <option value="tahoma" selected>Tahoma (Default)</option>
         <option value="roboto">Roboto</option>
@@ -77,18 +83,14 @@
   </div>
 
   <div class="helper">
-    Tip: Upload a photo, drag the chat box. Use the corner handle to rotate like Photoshop.
+    Tip: Upload a photo, drag the chat box. Use the blue corner handle to rotate.
   </div>
 
-<div class="upload-row">
-  <input class="file-input" type="file" id="bgUpload" accept="image/*" />
-  <button class="download-btn btn-filled" type="button" onclick="downloadComposite()">Download Image + Chat</button>
-
-  <!-- ✅ زر الرجوع -->
-  <button class="download-btn btn-transparent" type="button" onclick="window.location.href='index.html'">
-    Back
-  </button>
-</div>
+  <div class="upload-row">
+    <input class="file-input" type="file" id="bgUpload" accept="image/*" />
+    <button class="download-btn btn-filled" type="button" onclick="downloadComposite()">Download Image + Chat</button>
+    <button class="download-btn btn-transparent" type="button" onclick="window.location.href='index.html'">Back to Editor</button>
+  </div>
 
   <div class="chat-scope" id="chatScope">
     <div class="editor-box">
@@ -96,19 +98,16 @@
         <div class="line-select-inner" id="lineSelectInner"></div>
       </div>
 
-      <textarea id="textInput" placeholder="Enter text here... Each line will appear separately"></textarea>
+      <textarea id="textInput" placeholder="Enter text here... Each original line will have 1 checkbox"></textarea>
     </div>
   </div>
 
-  <div class="stage-wrap">
+  <!-- ✅ مخفي قبل رفع الصورة -->
+  <div class="stage-wrap hidden" id="stageWrap">
     <div class="stage" id="stage">
       <img id="bgImg" alt="" />
-
-      <!-- Overlay (draggable + rotatable) -->
       <div id="chatOverlay" aria-label="Drag to move chat">
         <div id="previewLines"></div>
-
-        <!-- ✅ Rotation handle -->
         <div id="rotateHandle" title="Rotate"></div>
       </div>
     </div>
@@ -122,4 +121,3 @@
   <script src="compose.js"></script>
 </body>
 </html>
-

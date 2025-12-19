@@ -5,9 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chat Log Wizard - Screen Editor</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <meta name="description" content="GTA Chat Log Generator - Screen Editor Style" />
+
+  <meta name="description" content="GTA Screen-Style Chat Log Generator" />
   <meta name="keywords" content="GTA, chat log, wizard, screen editor, chat generator" />
   <meta name="author" content=".1fu" />
+
+  <!-- Google Fonts (used for chat only) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Inter:wght@400;700&family=Open+Sans:wght@400;700&family=Lato:wght@400;700&family=Nunito:wght@400;700&family=Raleway:wght@400;700&family=Oswald:wght@400;700&family=Ubuntu:wght@400;700&family=Fira+Sans:wght@400;700&family=Rubik:wght@400;700&family=Source+Sans+3:wght@400;700&family=Cairo:wght@400;700&family=Tajawal:wght@400;700&family=Noto+Sans+Arabic:wght@400;700&family=Noto+Kufi+Arabic:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&family=Poppins:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -22,14 +29,14 @@
     <div class="control-group">
       <label>Font Size:</label>
       <div class="size-controls">
-        <button onclick="decreaseSize()">−</button>
+        <button type="button" onclick="decreaseSize()">−</button>
         <input type="text" id="sizeInput" value="13px" readonly />
-        <button onclick="increaseSize()">+</button>
+        <button type="button" onclick="increaseSize()">+</button>
       </div>
     </div>
 
     <div class="control-group">
-      <label>Font:</label>
+      <label>Font (Image Only):</label>
       <select id="fontSelect" class="font-select">
         <option value="tahoma" selected>Tahoma (Default)</option>
         <option value="roboto">Roboto</option>
@@ -72,10 +79,14 @@
         Show Background
       </label>
     </div>
+
+    <div class="control-group">
+      <a class="link-btn" href="compose.html">Open Photo Upload</a>
+    </div>
   </div>
 
-  <div class="hint">
-    Tip: Select lines using the checkboxes INSIDE the textarea area, then pick a color and press Save.
+  <div class="helper">
+    Tip: Select lines using checkboxes (multi-select), pick a color, then press Save.
   </div>
 
   <div class="chat-scope" id="chatScope">
@@ -84,24 +95,25 @@
         <div class="line-select-inner" id="lineSelectInner"></div>
       </div>
 
-      <textarea id="textInput" placeholder="Enter text here... Each line will appear separately"></textarea>
-    </div>
-
-    <div class="preview-container">
-      <div id="previewLines"></div>
+      <textarea id="textInput" placeholder="Enter text here... Each original line will have 1 checkbox"></textarea>
     </div>
   </div>
 
-  <button id="copyText">Copy Text</button>
+  <div class="output-box">
+    <div id="previewLines"></div>
+  </div>
+
+  <div class="action-buttons">
+    <button class="copy-btn" id="copyText">Copy Text</button>
+  </div>
 
   <div class="download-buttons">
     <button class="download-btn btn-transparent" onclick="downloadImage(true)">Download Transparent</button>
     <button class="download-btn btn-filled" onclick="downloadImage(false)">Download With Background</button>
-    <button class="download-btn btn-photo" onclick="window.location.href='compose.html'">Photo upload</button>
   </div>
 
   <div class="contact-info">
-    <p>For support and bug reports: <strong>&period;1fu</strong> on Discord</p>
+    <p>For support and bug reports: <strong>.1fu</strong> on Discord</p>
     <p class="credit">Developed by: W7dee</p>
   </div>
 

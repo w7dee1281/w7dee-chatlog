@@ -9,13 +9,13 @@ const bgToggle = document.getElementById('bgToggle');
 const fontSelect = document.getElementById('fontSelect');
 const chatScope = document.getElementById('chatScope');
 const saveColorBtn = document.getElementById('saveColorBtn');
-
 const lineSelectInner = document.getElementById('lineSelectInner');
 
 const bgUpload = document.getElementById('bgUpload');
 const bgImg = document.getElementById('bgImg');
-
 const stage = document.getElementById('stage');
+const stageWrap = document.getElementById('stageWrap');
+
 const chatOverlay = document.getElementById('chatOverlay');
 const rotateHandle = document.getElementById('rotateHandle');
 const rotationInput = document.getElementById('rotationInput');
@@ -60,13 +60,6 @@ async function ensureFontLoaded() {
   } catch (_) {}
 }
 
-function setRotation(deg) {
-  rotationDeg = deg;
-  chatOverlay.style.transform = `rotate(${rotationDeg}deg)`;
-  if (rotationInput) rotationInput.value = `${Math.round(rotationDeg)}°`;
-  clampOverlayToStage();
-}
-
 function applyFont(key) {
   currentFontKey = (key in FONT_MAP) ? key : 'tahoma';
   document.documentElement.style.setProperty('--chat-font', FONT_MAP[currentFontKey].css);
@@ -74,6 +67,31 @@ function applyFont(key) {
   updateAll();
 }
 fontSelect.addEventListener('change', () => applyFont(fontSelect.value));
+
+function setRotation(deg) {
+  rotationDeg = deg;
+  chatOverlay.style.transform = `rotate(${rotationDeg}deg)`;
+  if (rotationInput) rotationInput.value = `${Math.round(rotationDeg)}°`;
+  clampOverlayToStage();
+}
+
+/* ✅ stage على قد الصورة (بعد الرفع فقط) */
+function resizeStageToImage() {
+  if (!bgImg.naturalWidth || !bgImg.naturalHeight) return;
+
+  const maxW = stageWrap ? stageWrap.clientWidth : Math.min(1100, window.innerWidth * 0.96);
+  const natW = bgImg.naturalWidth;
+  const natH = bgImg.naturalHeight;
+
+  const scale = Math.min(1, maxW / natW);
+  const w = Math.round(natW * scale);
+  const h = Math.round(natH * scale);
+
+  stage.style.width = w + 'px';
+  stage.style.height = h + 'px';
+
+  clampOverlayToStage();
+}
 
 function cleanLineText(line) {
   if (!line) return '';
@@ -130,26 +148,104 @@ function getBaseLineColor(rawLine) {
   return defaultColor;
 }
 
-function syncCheckboxLineHeight() {
+/* ===== Wrap helpers ===== */
+function getTextareaLineHeightPx() {
   const cs = window.getComputedStyle(textInput);
-  const lh = parseFloat(cs.lineHeight) || 20;
-  const rows = lineSelectInner.querySelectorAll('.line-check-row');
-  rows.forEach(r => r.style.height = `${lh}px`);
+  const lh = parseFloat(cs.lineHeight);
+  return Number.isFinite(lh) ? lh : 20;
 }
 
+const wrapMeasureEl = (() => {
+  const el = document.createElement('div');
+  el.style.position = 'absolute';
+  el.style.left = '-99999px';
+  el.style.top = '0';
+  el.style.visibility = 'hidden';
+  el.style.whiteSpace = 'pre-wrap';
+  el.style.wordBreak = 'break-word';
+  el.style.overflowWrap = 'anywhere';
+  document.body.appendChild(el);
+  return el;
+})();
+
+function getWrappedRowCountForTextareaLine(text) {
+  const cs = window.getComputedStyle(textInput);
+  const w = textInput.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  wrapMeasureEl.style.width = Math.max(0, w) + 'px';
+  wrapMeasureEl.style.fontFamily = cs.fontFamily;
+  wrapMeasureEl.style.fontSize = cs.fontSize;
+  wrapMeasureEl.style.lineHeight = cs.lineHeight;
+  wrapMeasureEl.textContent = text && text.length ? text : ' ';
+  const lh = getTextareaLineHeightPx();
+  const h = wrapMeasureEl.scrollHeight;
+  return Math.max(1, Math.round(h / lh));
+}
+
+function wrapTextCanvas(ctx, text, maxWidth) {
+  if (!text || !text.trim()) return [' '];
+
+  const tokens = text.split(/(\s+)/);
+  const lines = [];
+  let line = '';
+
+  function pushLine(l){ lines.push(l.length ? l : ' '); }
+
+  for (const token of tokens) {
+    const test = line + token;
+    if (ctx.measureText(test).width <= maxWidth) {
+      line = test;
+      continue;
+    }
+
+    if (line.trim().length) {
+      pushLine(line);
+      line = token.trim() ? token : '';
+      continue;
+    }
+
+    let chunk = '';
+    for (const ch of token) {
+      const t2 = chunk + ch;
+      if (ctx.measureText(t2).width <= maxWidth) chunk = t2;
+      else { pushLine(chunk); chunk = ch; }
+    }
+    line = chunk;
+  }
+
+  if (line.length) pushLine(line);
+  return lines;
+}
+
+/* ===== Checkbox + preview ===== */
 function syncCheckboxScroll() {
   lineSelectInner.style.transform = `translateY(${-textInput.scrollTop}px)`;
+}
+
+function pruneState(keysSet) {
+  for (const k of Array.from(selectedKeys)) {
+    if (!keysSet.has(k)) selectedKeys.delete(k);
+  }
+  const next = {};
+  for (const [k, v] of Object.entries(customColorsByKey)) {
+    if (keysSet.has(k)) next[k] = v;
+  }
+  customColorsByKey = next;
 }
 
 function renderSelectors(lines, keys) {
   lineSelectInner.innerHTML = '';
 
+  const lh = getTextareaLineHeightPx();
+
   for (let i = 0; i < lines.length; i++) {
     const key = keys[i];
+    const raw = lines[i];
+
+    const wrappedRows = getWrappedRowCountForTextareaLine(raw);
 
     const row = document.createElement('div');
     row.className = 'line-check-row';
-    if (selectedKeys.has(key)) row.classList.add('selected');
+    row.style.height = `${lh}px`;
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
@@ -164,22 +260,16 @@ function renderSelectors(lines, keys) {
 
     row.appendChild(cb);
     lineSelectInner.appendChild(row);
+
+    for (let k = 1; k < wrappedRows; k++) {
+      const spacer = document.createElement('div');
+      spacer.className = 'line-check-row spacer';
+      spacer.style.height = `${lh}px`;
+      lineSelectInner.appendChild(spacer);
+    }
   }
 
-  syncCheckboxLineHeight();
   syncCheckboxScroll();
-}
-
-function pruneState(keysSet) {
-  for (const k of Array.from(selectedKeys)) {
-    if (!keysSet.has(k)) selectedKeys.delete(k);
-  }
-
-  const next = {};
-  for (const [k, v] of Object.entries(customColorsByKey)) {
-    if (keysSet.has(k)) next[k] = v;
-  }
-  customColorsByKey = next;
 }
 
 function saveColorToSelected() {
@@ -194,12 +284,8 @@ function saveColorToSelected() {
 }
 saveColorBtn.addEventListener('click', saveColorToSelected);
 
-// ✅ Preview فوق الصورة: خلفية على قد عرض السطر + متلاصقة + السطر الفاضي بدون خلفية
 function updatePreview(lines, keys) {
   previewLines.innerHTML = '';
-
-  const lineHeight = fontSize + 4;
-  const paddingX = 4;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
@@ -212,17 +298,9 @@ function updatePreview(lines, keys) {
     const row = document.createElement('div');
     row.className = 'chat-line';
     row.style.fontSize = fontSize + 'px';
-    row.style.lineHeight = lineHeight + 'px';
-    row.style.height = lineHeight + 'px';
-    row.style.margin = '0';
-    row.style.padding = '0';
 
     const span = document.createElement('span');
     span.className = 'chat-span';
-    span.style.display = 'inline-block';
-    span.style.padding = `0 ${paddingX}px`;
-    span.style.height = lineHeight + 'px';
-    span.style.lineHeight = lineHeight + 'px';
     span.style.color = finalColor;
 
     const hasText = !!displayText.trim();
@@ -230,7 +308,6 @@ function updatePreview(lines, keys) {
     else span.style.background = 'transparent';
 
     span.textContent = hasText ? displayText : ' ';
-
     row.appendChild(span);
     previewLines.appendChild(row);
   }
@@ -244,19 +321,20 @@ function updateAll() {
   pruneState(keysSet);
   renderSelectors(lines, keys);
   updatePreview(lines, keys);
+
+  // ✅ لو الصورة مرفوعة: نعيد حساب size (لأن preview ممكن تتغير)
+  if (bgImg && bgImg.src) clampOverlayToStage();
 }
 
 textInput.addEventListener('input', updateAll);
 textInput.addEventListener('scroll', syncCheckboxScroll);
+window.addEventListener('resize', () => {
+  updateAll();
+  if (bgImg && bgImg.src) resizeStageToImage();
+});
 
 colorPicker.addEventListener('input', updateAll);
 bgToggle.addEventListener('change', updateAll);
-
-window.addEventListener('resize', () => {
-  syncCheckboxLineHeight();
-  syncCheckboxScroll();
-  clampOverlayToStage();
-});
 
 function increaseSize() {
   fontSize += 1;
@@ -264,7 +342,6 @@ function increaseSize() {
   updateAll();
   clampOverlayToStage();
 }
-
 function decreaseSize() {
   if (fontSize > 8) {
     fontSize -= 1;
@@ -273,22 +350,33 @@ function decreaseSize() {
     clampOverlayToStage();
   }
 }
-
 window.increaseSize = increaseSize;
 window.decreaseSize = decreaseSize;
 
+/* Upload background */
 bgUpload.addEventListener('change', () => {
   const f = bgUpload.files?.[0];
   if (!f) return;
 
   const url = URL.createObjectURL(f);
+
   bgImg.onload = () => {
     URL.revokeObjectURL(url);
+
+    // ✅ اظهر مكان الصورة بعد الرفع
+    stageWrap.classList.remove('hidden');
+
+    // ✅ خليه على قد الصورة بالضبط
+    resizeStageToImage();
+
+    // ✅ خلي مكان الشات داخل الصورة مضبوط
     clampOverlayToStage();
   };
+
   bgImg.src = url;
 });
 
+/* Drag overlay */
 let dragging = false;
 let startClientX = 0;
 let startClientY = 0;
@@ -296,13 +384,13 @@ let startLeft = 0;
 let startTop = 0;
 
 function getClientPoint(e) {
-  if (e.touches && e.touches.length) {
-    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }
+  if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
   return { x: e.clientX, y: e.clientY };
 }
 
 function clampOverlayToStage() {
+  if (!stageWrap || stageWrap.classList.contains('hidden')) return;
+
   const stageRect = stage.getBoundingClientRect();
   const overlayRect = chatOverlay.getBoundingClientRect();
 
@@ -368,7 +456,7 @@ chatOverlay.addEventListener('touchstart', onDragStart, { passive: false });
 window.addEventListener('touchmove', onDragMove, { passive: false });
 window.addEventListener('touchend', onDragEnd);
 
-// Rotate
+/* Rotate handle */
 let rotating = false;
 let rotateCenter = { x: 0, y: 0 };
 let rotateStartPointerAngle = 0;
@@ -381,9 +469,7 @@ function angleFromCenter(cx, cy, x, y) {
 
 function getOverlayCenter() {
   const overlayRect = chatOverlay.getBoundingClientRect();
-  const cx = overlayRect.left + overlayRect.width / 2;
-  const cy = overlayRect.top + overlayRect.height / 2;
-  return { cx, cy };
+  return { cx: overlayRect.left + overlayRect.width / 2, cy: overlayRect.top + overlayRect.height / 2 };
 }
 
 function onRotateStart(e) {
@@ -397,8 +483,7 @@ function onRotateStart(e) {
   const c = getOverlayCenter();
   rotateCenter = { x: c.cx, y: c.cy };
 
-  const a = angleFromCenter(rotateCenter.x, rotateCenter.y, p.x, p.y);
-  rotateStartPointerAngle = a;
+  rotateStartPointerAngle = angleFromCenter(rotateCenter.x, rotateCenter.y, p.x, p.y);
   rotateStartRotation = rotationDeg;
 }
 
@@ -425,7 +510,7 @@ rotateHandle.addEventListener('touchstart', onRotateStart, { passive: false });
 window.addEventListener('touchmove', onRotateMove, { passive: false });
 window.addEventListener('touchend', onRotateEnd);
 
-// ✅ Export (Image + Chat): نفس منطق الخلفية + يحافظ على rotation
+/* Export composite (wrap like preview + rotation) */
 async function downloadComposite() {
   await ensureFontLoaded();
 
@@ -471,26 +556,38 @@ async function downloadComposite() {
   const paddingX = 4;
   const paddingY = 2;
 
-  // Measure each line
-  const prepared = [];
-  let maxWidth = 0;
+  const overlayRect = previewLines.getBoundingClientRect();
+  const maxTextWidth = (620 * scaleX) - (paddingX * 2);
+
+  const segments = [];
+  let maxSegWidth = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const key = keys[i];
 
-    const displayText = cleanLineText(raw) || ' ';
+    const originalText = cleanLineText(raw);
     const baseColor = getBaseLineColor(raw);
     const finalColor = customColorsByKey[key] || baseColor;
 
-    const w = ctx.measureText(displayText).width;
-    if (w > maxWidth) maxWidth = w;
+    const hasText = !!originalText.trim();
+    const wrapped = wrapTextCanvas(ctx, originalText, maxTextWidth);
 
-    prepared.push({ text: displayText, color: finalColor, width: w });
+    for (const seg of wrapped) {
+      const w = ctx.measureText(seg).width;
+      if (w > maxSegWidth) maxSegWidth = w;
+
+      segments.push({
+        text: seg,
+        color: finalColor,
+        width: w,
+        hasBg: hasText && bgToggle.checked
+      });
+    }
   }
 
-  const blockW = maxWidth + (paddingX * 2);
-  const blockH = lines.length * lineHeight;
+  const blockW = maxSegWidth + (paddingX * 2);
+  const blockH = segments.length * lineHeight;
 
   const rad = (rotationDeg * Math.PI) / 180;
   const cx = drawX + blockW / 2;
@@ -503,27 +600,22 @@ async function downloadComposite() {
   const originX = -blockW / 2;
   const originY = -blockH / 2;
 
-  // ✅ خلفية لكل سطر على قد عرضه + متلاصقة + بدون خلفية للسطر الفاضي
-  for (let i = 0; i < prepared.length; i++) {
-    const hasText = !!prepared[i].text.trim();
-    if (hasText && bgToggle.checked) {
+  // backgrounds per wrapped segment
+  let y = originY;
+  for (const seg of segments) {
+    if (seg.hasBg && seg.text.trim()) {
       ctx.fillStyle = colorPicker.value;
-      ctx.fillRect(
-        originX,
-        originY + (i * lineHeight),
-        prepared[i].width + (paddingX * 2),
-        lineHeight
-      );
+      ctx.fillRect(originX, y, seg.width + (paddingX * 2), lineHeight);
     }
+    y += lineHeight;
   }
 
-  for (let i = 0; i < prepared.length; i++) {
-    ctx.fillStyle = prepared[i].color;
-    ctx.fillText(
-      prepared[i].text,
-      originX + paddingX,
-      originY + (i * lineHeight) + paddingY
-    );
+  // text
+  y = originY;
+  for (const seg of segments) {
+    ctx.fillStyle = seg.color;
+    ctx.fillText(seg.text, originX + paddingX, y + paddingY);
+    y += lineHeight;
   }
 
   ctx.restore();
@@ -531,7 +623,6 @@ async function downloadComposite() {
   canvas.toBlob((blob) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
 
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
@@ -545,6 +636,7 @@ async function downloadComposite() {
       pad(now.getSeconds()) +
       '.png';
 
+    a.href = url;
     a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
@@ -553,7 +645,10 @@ async function downloadComposite() {
 
 window.downloadComposite = downloadComposite;
 
-// Init
+/* Init */
 applyFont('tahoma');
 setRotation(0);
 updateAll();
+
+/* ✅ اول ما تفتح الصفحة: نخفي الـ stage نهائي */
+if (stageWrap) stageWrap.classList.add('hidden');

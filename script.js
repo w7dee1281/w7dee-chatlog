@@ -9,12 +9,11 @@ const bgToggle = document.getElementById('bgToggle');
 const fontSelect = document.getElementById('fontSelect');
 const chatScope = document.getElementById('chatScope');
 const saveColorBtn = document.getElementById('saveColorBtn');
-
 const lineSelectInner = document.getElementById('lineSelectInner');
+const copyBtn = document.getElementById('copyText');
 
-// selection by stable key
 const selectedKeys = new Set();
-let customColorsByKey = {}; // { key: "#RRGGBB" }
+let customColorsByKey = {};
 
 const FONT_MAP = {
   tahoma: { css: 'Tahoma, Arial, sans-serif', canvas: 'Tahoma, Arial, sans-serif', load: 'Tahoma' },
@@ -53,6 +52,7 @@ async function ensureFontLoaded() {
 
 function applyFont(key) {
   currentFontKey = (key in FONT_MAP) ? key : 'tahoma';
+  document.documentElement.style.setProperty('--chat-font', FONT_MAP[currentFontKey].css);
   chatScope.style.setProperty('--chat-font', FONT_MAP[currentFontKey].css);
   updateAll();
 }
@@ -113,26 +113,106 @@ function getBaseLineColor(rawLine) {
   return defaultColor;
 }
 
-function syncCheckboxLineHeight() {
+/* ===== Wrap helpers (checkbox alignment + canvas export) ===== */
+function getTextareaLineHeightPx() {
   const cs = window.getComputedStyle(textInput);
-  const lh = parseFloat(cs.lineHeight) || 20;
-  const rows = lineSelectInner.querySelectorAll('.line-check-row');
-  rows.forEach(r => r.style.height = `${lh}px`);
+  const lh = parseFloat(cs.lineHeight);
+  return Number.isFinite(lh) ? lh : 20;
 }
 
+const wrapMeasureEl = (() => {
+  const el = document.createElement('div');
+  el.style.position = 'absolute';
+  el.style.left = '-99999px';
+  el.style.top = '0';
+  el.style.visibility = 'hidden';
+  el.style.whiteSpace = 'pre-wrap';
+  el.style.wordBreak = 'break-word';
+  el.style.overflowWrap = 'anywhere';
+  document.body.appendChild(el);
+  return el;
+})();
+
+function getWrappedRowCountForTextareaLine(text) {
+  const cs = window.getComputedStyle(textInput);
+  const w = textInput.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  wrapMeasureEl.style.width = Math.max(0, w) + 'px';
+  wrapMeasureEl.style.fontFamily = cs.fontFamily;
+  wrapMeasureEl.style.fontSize = cs.fontSize;
+  wrapMeasureEl.style.lineHeight = cs.lineHeight;
+  wrapMeasureEl.textContent = text && text.length ? text : ' ';
+  const lh = getTextareaLineHeightPx();
+  const h = wrapMeasureEl.scrollHeight;
+  return Math.max(1, Math.round(h / lh));
+}
+
+function wrapTextCanvas(ctx, text, maxWidth) {
+  if (!text || !text.trim()) return [' '];
+
+  const tokens = text.split(/(\s+)/); // keep spaces
+  const lines = [];
+  let line = '';
+
+  function pushLine(l){ lines.push(l.length ? l : ' '); }
+
+  for (const token of tokens) {
+    const test = line + token;
+    if (ctx.measureText(test).width <= maxWidth) {
+      line = test;
+      continue;
+    }
+
+    if (line.trim().length) {
+      pushLine(line);
+      line = token.trim() ? token : '';
+      continue;
+    }
+
+    // token longer than maxWidth -> split
+    let chunk = '';
+    for (const ch of token) {
+      const t2 = chunk + ch;
+      if (ctx.measureText(t2).width <= maxWidth) chunk = t2;
+      else { pushLine(chunk); chunk = ch; }
+    }
+    line = chunk;
+  }
+
+  if (line.length) pushLine(line);
+  return lines;
+}
+
+/* ===== Checkbox + preview rendering ===== */
 function syncCheckboxScroll() {
   lineSelectInner.style.transform = `translateY(${-textInput.scrollTop}px)`;
+}
+
+function pruneState(keysSet) {
+  for (const k of Array.from(selectedKeys)) {
+    if (!keysSet.has(k)) selectedKeys.delete(k);
+  }
+  const next = {};
+  for (const [k, v] of Object.entries(customColorsByKey)) {
+    if (keysSet.has(k)) next[k] = v;
+  }
+  customColorsByKey = next;
 }
 
 function renderSelectors(lines, keys) {
   lineSelectInner.innerHTML = '';
 
+  const lh = getTextareaLineHeightPx();
+
   for (let i = 0; i < lines.length; i++) {
     const key = keys[i];
+    const raw = lines[i];
 
+    const wrappedRows = getWrappedRowCountForTextareaLine(raw);
+
+    // row 1: real checkbox
     const row = document.createElement('div');
     row.className = 'line-check-row';
-    if (selectedKeys.has(key)) row.classList.add('selected');
+    row.style.height = `${lh}px`;
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
@@ -147,28 +227,23 @@ function renderSelectors(lines, keys) {
 
     row.appendChild(cb);
     lineSelectInner.appendChild(row);
+
+    // continuation visual rows (no checkbox)
+    for (let k = 1; k < wrappedRows; k++) {
+      const spacer = document.createElement('div');
+      spacer.className = 'line-check-row spacer';
+      spacer.style.height = `${lh}px`;
+      lineSelectInner.appendChild(spacer);
+    }
   }
 
-  syncCheckboxLineHeight();
   syncCheckboxScroll();
-}
-
-function pruneState(keysSet) {
-  for (const k of Array.from(selectedKeys)) {
-    if (!keysSet.has(k)) selectedKeys.delete(k);
-  }
-
-  const next = {};
-  for (const [k, v] of Object.entries(customColorsByKey)) {
-    if (keysSet.has(k)) next[k] = v;
-  }
-  customColorsByKey = next;
 }
 
 function saveColorToSelected() {
   if (selectedKeys.size === 0) return;
-
   const c = textColorPicker.value;
+
   const next = { ...customColorsByKey };
   for (const k of selectedKeys) next[k] = c;
   customColorsByKey = next;
@@ -177,17 +252,8 @@ function saveColorToSelected() {
 }
 saveColorBtn.addEventListener('click', saveColorToSelected);
 
-/**
- * ✅ المطلوب:
- * - الخلفية على قد عرض السطر فقط
- * - الخلفية متلاصقة عموديًا (بدون فراغات)
- * - السطر الفاضي ما له خلفية
- */
 function updatePreview(lines, keys) {
   previewLines.innerHTML = '';
-
-  const lineHeight = fontSize + 4;
-  const paddingX = 4;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
@@ -200,29 +266,16 @@ function updatePreview(lines, keys) {
     const row = document.createElement('div');
     row.className = 'chat-line';
     row.style.fontSize = fontSize + 'px';
-    row.style.lineHeight = lineHeight + 'px';
-    row.style.height = lineHeight + 'px';
-    row.style.margin = '0';
-    row.style.padding = '0';
 
     const span = document.createElement('span');
     span.className = 'chat-span';
-    span.style.display = 'inline-block';
-    span.style.padding = `0 ${paddingX}px`;
-    span.style.height = lineHeight + 'px';
-    span.style.lineHeight = lineHeight + 'px';
     span.style.color = finalColor;
 
-    // خلفية فقط لو السطر مش فاضي + التفعيل شغال
     const hasText = !!displayText.trim();
-    if (hasText && bgToggle.checked) {
-      span.style.background = colorPicker.value;
-    } else {
-      span.style.background = 'transparent';
-    }
+    if (hasText && bgToggle.checked) span.style.background = colorPicker.value;
+    else span.style.background = 'transparent';
 
-    span.textContent = hasText ? displayText : ' '; // يحافظ على ارتفاع السطر
-
+    span.textContent = hasText ? displayText : ' ';
     row.appendChild(span);
     previewLines.appendChild(row);
   }
@@ -240,21 +293,16 @@ function updateAll() {
 
 textInput.addEventListener('input', updateAll);
 textInput.addEventListener('scroll', syncCheckboxScroll);
+window.addEventListener('resize', updateAll);
 
 colorPicker.addEventListener('input', updateAll);
 bgToggle.addEventListener('change', updateAll);
-
-window.addEventListener('resize', () => {
-  syncCheckboxLineHeight();
-  syncCheckboxScroll();
-});
 
 function increaseSize() {
   fontSize += 1;
   sizeInput.value = fontSize + 'px';
   updateAll();
 }
-
 function decreaseSize() {
   if (fontSize > 8) {
     fontSize -= 1;
@@ -262,25 +310,23 @@ function decreaseSize() {
     updateAll();
   }
 }
+window.increaseSize = increaseSize;
+window.decreaseSize = decreaseSize;
 
-document.getElementById('copyText').addEventListener('click', function () {
-  navigator.clipboard.writeText(textInput.value).then(function () {
-    const notification = document.getElementById('notification');
-    notification.classList.add('show');
-    setTimeout(function () {
-      notification.classList.remove('show');
-    }, 2000);
+/* Copy */
+copyBtn.addEventListener('click', () => {
+  navigator.clipboard.writeText(textInput.value).then(() => {
+    const n = document.getElementById('notification');
+    n.classList.add('show');
+    setTimeout(() => n.classList.remove('show'), 1400);
   });
 });
 
-// ✅ Export: نفس منطق الخلفية (عرض السطر فقط + بدون فراغات + بدون خلفية للسطر الفاضي)
+/* ===== Export (wrap like preview) ===== */
 async function downloadImage(transparent) {
   await ensureFontLoaded();
 
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
   const text = textInput.value;
-
   if (!text.trim()) {
     alert('Please enter some text first!');
     return;
@@ -289,59 +335,72 @@ async function downloadImage(transparent) {
   const lines = text.split('\n');
   const keys = buildLineKeys(lines);
 
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
   const canvasFontFamily = (FONT_MAP[currentFontKey]?.canvas) || FONT_MAP.tahoma.canvas;
   ctx.font = `${fontSize}px ${canvasFontFamily}`;
+  ctx.textBaseline = 'top';
 
   const lineHeight = fontSize + 4;
   const paddingX = 4;
   const paddingY = 2;
 
-  let maxWidth = 0;
-  const lineData = [];
+  const maxTextWidth = Math.max(220, (previewLines?.clientWidth || 900) - (paddingX * 2));
+
+  const segments = [];
+  let maxSegWidth = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const key = keys[i];
 
-    const displayText = cleanLineText(raw) || ' ';
+    const originalText = cleanLineText(raw);
     const baseColor = getBaseLineColor(raw);
     const finalColor = customColorsByKey[key] || baseColor;
 
-    const width = ctx.measureText(displayText).width;
-    lineData.push({ text: displayText, color: finalColor, width });
-    if (width > maxWidth) maxWidth = width;
+    const hasText = !!originalText.trim();
+    const wrapped = wrapTextCanvas(ctx, originalText, maxTextWidth);
+
+    for (const seg of wrapped) {
+      const w = ctx.measureText(seg).width;
+      if (w > maxSegWidth) maxSegWidth = w;
+
+      segments.push({
+        text: seg,
+        color: finalColor,
+        width: w,
+        hasBg: hasText && bgToggle.checked && !transparent
+      });
+    }
   }
 
-  canvas.width = maxWidth + (paddingX * 2) + 10;
-  canvas.height = (lines.length * lineHeight) + 10;
+  canvas.width = Math.ceil(maxSegWidth + (paddingX * 2) + 10);
+  canvas.height = Math.ceil((segments.length * lineHeight) + 10);
 
   ctx.font = `${fontSize}px ${canvasFontFamily}`;
   ctx.textBaseline = 'top';
 
-  let currentY = 5;
+  let y = 5;
 
-  for (let i = 0; i < lineData.length; i++) {
-    const data = lineData[i];
-    const hasText = !!data.text.trim();
-
-    // ✅ خلفية على قد عرض السطر فقط + لا ترسم للسطر الفاضي
-    if (hasText && !transparent && bgToggle.checked) {
+  for (const seg of segments) {
+    if (seg.hasBg && seg.text.trim()) {
       ctx.fillStyle = colorPicker.value;
-      ctx.fillRect(5, currentY, data.width + (paddingX * 2), lineHeight);
+      ctx.fillRect(5, y, seg.width + (paddingX * 2), lineHeight);
     }
 
-    ctx.fillStyle = data.color;
-    ctx.fillText(data.text, 5 + paddingX, currentY + paddingY);
-    currentY += lineHeight;
+    ctx.fillStyle = seg.color;
+    ctx.fillText(seg.text, 5 + paddingX, y + paddingY);
+
+    y += lineHeight;
   }
 
-  canvas.toBlob(function (blob) {
+  canvas.toBlob((blob) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
 
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
-
     const fileName =
       'chatlog-' +
       now.getFullYear() + '-' +
@@ -359,7 +418,8 @@ async function downloadImage(transparent) {
     URL.revokeObjectURL(url);
   }, 'image/png');
 }
+window.downloadImage = downloadImage;
 
-// init
+/* Init */
 applyFont('tahoma');
 updateAll();

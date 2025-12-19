@@ -3,11 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat Log Wizard - Screen Editor</title>
+  <title>Chat Log Wizard - Photo Compose</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <meta name="description" content="GTA Chat Log Generator - Screen Editor Style" />
-  <meta name="keywords" content="GTA, chat log, wizard, screen editor, chat generator" />
-  <meta name="author" content=".1fu" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -15,7 +12,7 @@
     <div class="logo-text">
       <span class="gta-white">Chat Log</span><span class="gta-yellow">Wizard</span>
     </div>
-    <div class="subtitle">GTA Screen-Style Chat Log Generator</div>
+    <div class="subtitle">Photo Composer (Upload image + drag/rotate chat)</div>
   </div>
 
   <div class="controls">
@@ -54,7 +51,7 @@
     </div>
 
     <div class="control-group">
-      <label>Background:</label>
+      <label>Chat BG:</label>
       <input type="color" id="colorPicker" class="color-picker" value="#000000" />
     </div>
 
@@ -69,14 +66,29 @@
     <div class="control-group">
       <label class="bg-label">
         <input type="checkbox" id="bgToggle" checked style="width: 20px; height: 20px; cursor: pointer;" />
-        Show Background
+        Show Chat Background
       </label>
+    </div>
+
+    <div class="control-group">
+      <label>Rotation:</label>
+      <input id="rotationInput" type="text" value="0°" readonly class="rotation-readonly" />
     </div>
   </div>
 
-  <div class="hint">
-    Tip: Select lines using the checkboxes INSIDE the textarea area, then pick a color and press Save.
+  <div class="helper">
+    Tip: Upload a photo, drag the chat box. Use the corner handle to rotate like Photoshop.
   </div>
+
+<div class="upload-row">
+  <input class="file-input" type="file" id="bgUpload" accept="image/*" />
+  <button class="download-btn btn-filled" type="button" onclick="downloadComposite()">Download Image + Chat</button>
+
+  <!-- ✅ زر الرجوع -->
+  <button class="download-btn btn-transparent" type="button" onclick="window.location.href='index.html'">
+    Back
+  </button>
+</div>
 
   <div class="chat-scope" id="chatScope">
     <div class="editor-box">
@@ -86,18 +98,20 @@
 
       <textarea id="textInput" placeholder="Enter text here... Each line will appear separately"></textarea>
     </div>
-
-    <div class="preview-container">
-      <div id="previewLines"></div>
-    </div>
   </div>
 
-  <button id="copyText">Copy Text</button>
+  <div class="stage-wrap">
+    <div class="stage" id="stage">
+      <img id="bgImg" alt="" />
 
-  <div class="download-buttons">
-    <button class="download-btn btn-transparent" onclick="downloadImage(true)">Download Transparent</button>
-    <button class="download-btn btn-filled" onclick="downloadImage(false)">Download With Background</button>
-    <button class="download-btn btn-photo" onclick="window.location.href='compose.html'">Photo upload</button>
+      <!-- Overlay (draggable + rotatable) -->
+      <div id="chatOverlay" aria-label="Drag to move chat">
+        <div id="previewLines"></div>
+
+        <!-- ✅ Rotation handle -->
+        <div id="rotateHandle" title="Rotate"></div>
+      </div>
+    </div>
   </div>
 
   <div class="contact-info">
@@ -105,8 +119,7 @@
     <p class="credit">Developed by: W7dee</p>
   </div>
 
-  <div class="copied-notification" id="notification">✓ Text copied!</div>
-
-  <script src="script.js"></script>
+  <script src="compose.js"></script>
 </body>
 </html>
+

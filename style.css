@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Cairo:wght@400;700&family=Tajawal:wght@400;700&family=Poppins:wght@400;700&family=Montserrat:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Cairo:wght@400;700&family=Tajawal:wght@400;700&family=Poppins:wght@400;700&family=Montserrat:wght@400;700&family=Inter:wght@400;700&family=Open+Sans:wght@400;700&family=Lato:wght@400;700&family=Nunito:wght@400;700&family=Raleway:wght@400;700&family=Oswald:wght@400;700&family=Ubuntu:wght@400;700&family=Fira+Sans:wght@400;700&family=Rubik:wght@400;700&family=Source+Sans+3:wght@400;700&family=Noto+Sans+Arabic:wght@400;700&family=Noto+Kufi+Arabic:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&display=swap');
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -104,11 +104,10 @@ body {
 }
 
 .editor-box{
-  width:900px;      /* ⬅️ زودنا العرض */
-  max-width:95vw;   /* ⬅️ استغلال أفضل للشاشة */
-  position:relative;
+  width: 900px;
+  max-width: 95vw;
+  position: relative;
 }
-
 
 /* ✅ FIX: padding-top matches textarea padding-top (15px) */
 .line-select {
@@ -120,7 +119,7 @@ body {
   border: 2px solid #404249;
   background: #1e1f22;
   border-radius: 8px 0 0 8px;
-  padding: 15px 8px;     /* ✅ was 12px before */
+  padding: 15px 8px;
   overflow: hidden;
 }
 
@@ -180,25 +179,25 @@ body {
   border: 1px solid #404249;
 }
 
+/* ✅ previewLines becomes a single background block when enabled */
 #previewLines {
   display: flex;
   flex-direction: column;
   gap: 0;
   align-items: flex-start;
   width: 100%;
+  border-radius: 4px;
 }
 
-.chat-line {
+.chat-line{
   font-family: var(--chat-font);
-  padding: 2px 4px;
-  display: inline-block;
-  width: auto;
-  line-height: 1.3;
-  font-weight: normal;
   margin: 0;
-  border-radius: 3px;
+  padding: 0;
+  border-radius: 0;
   text-align: left;
+  display: block; /* مهم عشان كل سطر ياخذ صف كامل */
 }
+
 
 #copyText {
   display: block;
@@ -248,6 +247,60 @@ body {
   box-shadow: 0 4px 12px rgba(88, 101, 242, 0.4);
 }
 
+/* compose page extra styles (kept compatible) */
+.stage-wrap { width: 100%; display: flex; justify-content: center; margin-top: 14px; }
+.stage {
+  width: 900px;
+  max-width: 95vw;
+  position: relative;
+  border: 1px solid #404249;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #111;
+}
+#bgImg { display: block; width: 100%; height: auto; }
+
+#chatOverlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 0;
+}
+#chatOverlay.dragging { cursor: grabbing; }
+
+#chatOverlay #previewLines {
+  padding: 6px 6px; /* single block padding for overlay */
+  border-radius: 6px;
+}
+
+.helper {
+  color: #aaa;
+  font-size: 13px;
+  margin: 6px 0 12px;
+  text-align: center;
+  max-width: 90vw;
+}
+
+.upload-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.file-input {
+  color: #fff;
+  background: #1e1f22;
+  border: 1px solid #404249;
+  padding: 10px;
+  border-radius: 8px;
+}
+
 .contact-info {
   margin-top: 20px;
   text-align: center;
@@ -275,3 +328,41 @@ body {
   z-index: 1000;
 }
 .copied-notification.show { opacity: 1; }
+/* ===== Compose Rotation Handle ===== */
+.rotation-readonly{
+  height: 35px;
+  width: 70px;
+  border: 2px solid #404249;
+  border-radius: 6px;
+  background: #1e1f22;
+  color: #fff;
+  text-align: center;
+}
+
+#chatOverlay{
+  transform-origin: center center; /* مهم للتدوير */
+}
+
+#rotateHandle{
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  right: -10px;
+  bottom: -10px;
+  border-radius: 999px;
+  background: #5865f2;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
+  cursor: grab;
+}
+
+#chatOverlay.dragging #rotateHandle,
+#chatOverlay.rotating #rotateHandle{
+  cursor: grabbing;
+}
+
+/* optional: show a small guide line/outline while rotating */
+#chatOverlay.rotating{
+  outline: 1px dashed rgba(255,255,255,.5);
+  outline-offset: 4px;
+}

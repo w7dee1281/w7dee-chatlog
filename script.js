@@ -17,14 +17,39 @@ const selectedKeys = new Set();
 let customColorsByKey = {}; // { key: "#RRGGBB" }
 
 const FONT_MAP = {
-  tahoma: { css: 'Tahoma, Arial, sans-serif', canvas: 'Tahoma, Arial, sans-serif' },
-  roboto: { css: '"Roboto", Tahoma, Arial, sans-serif', canvas: '"Roboto", Tahoma, Arial, sans-serif' },
-  cairo: { css: '"Cairo", Tahoma, Arial, sans-serif', canvas: '"Cairo", Tahoma, Arial, sans-serif' },
-  tajawal: { css: '"Tajawal", Tahoma, Arial, sans-serif', canvas: '"Tajawal", Tahoma, Arial, sans-serif' },
-  poppins: { css: '"Poppins", Tahoma, Arial, sans-serif', canvas: '"Poppins", Tahoma, Arial, sans-serif' },
-  montserrat: { css: '"Montserrat", Tahoma, Arial, sans-serif', canvas: '"Montserrat", Tahoma, Arial, sans-serif' },
+  tahoma: { css: 'Tahoma, Arial, sans-serif', canvas: 'Tahoma, Arial, sans-serif', load: 'Tahoma' },
+  roboto: { css: '"Roboto", Tahoma, Arial, sans-serif', canvas: '"Roboto", Tahoma, Arial, sans-serif', load: 'Roboto' },
+  inter: { css: '"Inter", Tahoma, Arial, sans-serif', canvas: '"Inter", Tahoma, Arial, sans-serif', load: 'Inter' },
+  opensans: { css: '"Open Sans", Tahoma, Arial, sans-serif', canvas: '"Open Sans", Tahoma, Arial, sans-serif', load: 'Open Sans' },
+  lato: { css: '"Lato", Tahoma, Arial, sans-serif', canvas: '"Lato", Tahoma, Arial, sans-serif', load: 'Lato' },
+  nunito: { css: '"Nunito", Tahoma, Arial, sans-serif', canvas: '"Nunito", Tahoma, Arial, sans-serif', load: 'Nunito' },
+  raleway: { css: '"Raleway", Tahoma, Arial, sans-serif', canvas: '"Raleway", Tahoma, Arial, sans-serif', load: 'Raleway' },
+  oswald: { css: '"Oswald", Tahoma, Arial, sans-serif', canvas: '"Oswald", Tahoma, Arial, sans-serif', load: 'Oswald' },
+  ubuntu: { css: '"Ubuntu", Tahoma, Arial, sans-serif', canvas: '"Ubuntu", Tahoma, Arial, sans-serif', load: 'Ubuntu' },
+  firasans: { css: '"Fira Sans", Tahoma, Arial, sans-serif', canvas: '"Fira Sans", Tahoma, Arial, sans-serif', load: 'Fira Sans' },
+  rubik: { css: '"Rubik", Tahoma, Arial, sans-serif', canvas: '"Rubik", Tahoma, Arial, sans-serif', load: 'Rubik' },
+  sourcesans3: { css: '"Source Sans 3", Tahoma, Arial, sans-serif', canvas: '"Source Sans 3", Tahoma, Arial, sans-serif', load: 'Source Sans 3' },
+
+  cairo: { css: '"Cairo", Tahoma, Arial, sans-serif', canvas: '"Cairo", Tahoma, Arial, sans-serif', load: 'Cairo' },
+  tajawal: { css: '"Tajawal", Tahoma, Arial, sans-serif', canvas: '"Tajawal", Tahoma, Arial, sans-serif', load: 'Tajawal' },
+  notosansarabic: { css: '"Noto Sans Arabic", Tahoma, Arial, sans-serif', canvas: '"Noto Sans Arabic", Tahoma, Arial, sans-serif', load: 'Noto Sans Arabic' },
+  notokufiarabic: { css: '"Noto Kufi Arabic", Tahoma, Arial, sans-serif', canvas: '"Noto Kufi Arabic", Tahoma, Arial, sans-serif', load: 'Noto Kufi Arabic' },
+  notonaskharabic: { css: '"Noto Naskh Arabic", Tahoma, Arial, sans-serif', canvas: '"Noto Naskh Arabic", Tahoma, Arial, sans-serif', load: 'Noto Naskh Arabic' },
+
+  poppins: { css: '"Poppins", Tahoma, Arial, sans-serif', canvas: '"Poppins", Tahoma, Arial, sans-serif', load: 'Poppins' },
+  montserrat: { css: '"Montserrat", Tahoma, Arial, sans-serif', canvas: '"Montserrat", Tahoma, Arial, sans-serif', load: 'Montserrat' },
 };
+
 let currentFontKey = 'tahoma';
+
+async function ensureFontLoaded() {
+  try {
+    if (!document.fonts || !document.fonts.load) return;
+    const f = FONT_MAP[currentFontKey] || FONT_MAP.tahoma;
+    await document.fonts.load(`${Math.max(fontSize, 12)}px "${f.load}"`);
+    await document.fonts.ready;
+  } catch (_) {}
+}
 
 function applyFont(key) {
   currentFontKey = (key in FONT_MAP) ? key : 'tahoma';
@@ -52,10 +77,8 @@ function buildLineKeys(lines) {
   return keys;
 }
 
-// IMPORTANT: base rules do NOT use the picker as default
 function getBaseLineColor(rawLine) {
   const defaultColor = '#ffffff';
-
   if (!rawLine || rawLine.length === 0) return defaultColor;
 
   if (rawLine.length >= 8 && rawLine[0] === '{' && rawLine[7] === '}') {
@@ -97,7 +120,6 @@ function syncCheckboxLineHeight() {
   rows.forEach(r => r.style.height = `${lh}px`);
 }
 
-// ✅ now only follow scroll (no extra padding adjustments)
 function syncCheckboxScroll() {
   lineSelectInner.style.transform = `translateY(${-textInput.scrollTop}px)`;
 }
@@ -155,32 +177,54 @@ function saveColorToSelected() {
 }
 saveColorBtn.addEventListener('click', saveColorToSelected);
 
+/**
+ * ✅ المطلوب:
+ * - الخلفية على قد عرض السطر فقط
+ * - الخلفية متلاصقة عموديًا (بدون فراغات)
+ * - السطر الفاضي ما له خلفية
+ */
 function updatePreview(lines, keys) {
   previewLines.innerHTML = '';
+
+  const lineHeight = fontSize + 4;
+  const paddingX = 4;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const key = keys[i];
 
-    const div = document.createElement('div');
-    div.className = 'chat-line';
-
     const displayText = cleanLineText(raw);
     const baseColor = getBaseLineColor(raw);
     const finalColor = customColorsByKey[key] || baseColor;
 
-    if (!displayText.trim()) {
-      div.innerHTML = '&nbsp;';
-      div.style.background = 'transparent';
+    const row = document.createElement('div');
+    row.className = 'chat-line';
+    row.style.fontSize = fontSize + 'px';
+    row.style.lineHeight = lineHeight + 'px';
+    row.style.height = lineHeight + 'px';
+    row.style.margin = '0';
+    row.style.padding = '0';
+
+    const span = document.createElement('span');
+    span.className = 'chat-span';
+    span.style.display = 'inline-block';
+    span.style.padding = `0 ${paddingX}px`;
+    span.style.height = lineHeight + 'px';
+    span.style.lineHeight = lineHeight + 'px';
+    span.style.color = finalColor;
+
+    // خلفية فقط لو السطر مش فاضي + التفعيل شغال
+    const hasText = !!displayText.trim();
+    if (hasText && bgToggle.checked) {
+      span.style.background = colorPicker.value;
     } else {
-      div.textContent = displayText;
-      div.style.background = bgToggle.checked ? colorPicker.value : 'transparent';
+      span.style.background = 'transparent';
     }
 
-    div.style.fontSize = fontSize + 'px';
-    div.style.color = finalColor;
+    span.textContent = hasText ? displayText : ' '; // يحافظ على ارتفاع السطر
 
-    previewLines.appendChild(div);
+    row.appendChild(span);
+    previewLines.appendChild(row);
   }
 }
 
@@ -229,7 +273,10 @@ document.getElementById('copyText').addEventListener('click', function () {
   });
 });
 
-function downloadImage(transparent) {
+// ✅ Export: نفس منطق الخلفية (عرض السطر فقط + بدون فراغات + بدون خلفية للسطر الفاضي)
+async function downloadImage(transparent) {
+  await ensureFontLoaded();
+
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const text = textInput.value;
@@ -262,7 +309,6 @@ function downloadImage(transparent) {
 
     const width = ctx.measureText(displayText).width;
     lineData.push({ text: displayText, color: finalColor, width });
-
     if (width > maxWidth) maxWidth = width;
   }
 
@@ -276,8 +322,10 @@ function downloadImage(transparent) {
 
   for (let i = 0; i < lineData.length; i++) {
     const data = lineData[i];
+    const hasText = !!data.text.trim();
 
-    if (data.text.trim() && !transparent && bgToggle.checked) {
+    // ✅ خلفية على قد عرض السطر فقط + لا ترسم للسطر الفاضي
+    if (hasText && !transparent && bgToggle.checked) {
       ctx.fillStyle = colorPicker.value;
       ctx.fillRect(5, currentY, data.width + (paddingX * 2), lineHeight);
     }
@@ -309,9 +357,8 @@ function downloadImage(transparent) {
     a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
-  });
+  }, 'image/png');
 }
-
 
 // init
 applyFont('tahoma');

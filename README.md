@@ -6,7 +6,7 @@ Create GTA-like chat logs with per-line coloring, font control , and export them
 ---
 
 ##  Live Demo
-GitHub Pages:https://w7dee1281.github.io/w7dee-chatlog/
+GitHub Pages:	wizard.arph.org
 
 
 ---

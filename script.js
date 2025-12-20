@@ -344,7 +344,7 @@ async function downloadImage(transparent) {
 
   const lineHeight = fontSize + 4;
   const paddingX = 4;
-  const paddingY = 2;
+  const paddingY = 2.5;
 
   const maxTextWidth = Math.max(220, (previewLines?.clientWidth || 900) - (paddingX * 2));
 

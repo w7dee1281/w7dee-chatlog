@@ -554,7 +554,7 @@ async function downloadComposite() {
 
   const lineHeight = fontSize + 4;
   const paddingX = 4;
-  const paddingY = 2;
+  const paddingY = 2.5;
 
   const overlayRect = previewLines.getBoundingClientRect();
   const maxTextWidth = (620 * scaleX) - (paddingX * 2);

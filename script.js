@@ -39,6 +39,130 @@ const FONT_MAP = {
   montserrat: { css: '"Montserrat", Tahoma, Arial, sans-serif', canvas: '"Montserrat", Tahoma, Arial, sans-serif', load: 'Montserrat' },
 };
 
+function stripInvisibleChars(str) {
+  return String(str || '').replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+}
+
+// Inline color markup:
+// [c=56d64b]colored text[/c]
+function parseInlineColors(text, fallbackColor) {
+  const s = stripInvisibleChars(text || '');
+  const runs = [];
+  let i = 0;
+  let current = fallbackColor;
+
+  while (i < s.length) {
+    const open = s.indexOf('[c=', i);
+    const close = s.indexOf('[/c]', i);
+
+    if (open === -1 && close === -1) {
+      if (i < s.length) runs.push({ text: s.slice(i), color: current });
+      break;
+    }
+
+    // closing tag first
+    if (close !== -1 && (open === -1 || close < open)) {
+      if (close > i) runs.push({ text: s.slice(i, close), color: current });
+      current = fallbackColor;
+      i = close + 4;
+      continue;
+    }
+
+    // opening tag first
+    if (open !== -1) {
+      if (open > i) runs.push({ text: s.slice(i, open), color: current });
+
+      const end = s.indexOf(']', open);
+      if (end === -1) {
+        // broken tag -> treat as text
+        runs.push({ text: s.slice(open), color: current });
+        break;
+      }
+
+      const code = s.slice(open + 3, end).trim();
+      if (/^[0-9A-Fa-f]{6}$/.test(code)) current = '#' + code;
+      // invalid codes are ignored (keep current)
+      i = end + 1;
+      continue;
+    }
+  }
+
+  if (runs.length === 0) runs.push({ text: ' ', color: fallbackColor });
+  return runs;
+}
+
+function runsToPlainText(runs) {
+  return (runs || []).map(r => r.text).join('');
+}
+
+// Wrap colored runs for canvas drawing
+function wrapRunsCanvas(ctx, runs, maxWidth) {
+  const tokens = [];
+  for (const r of runs) {
+    // split keeping spaces
+    const parts = String(r.text || '').split(/(\s+)/);
+    for (const p of parts) {
+      if (p.length) tokens.push({ text: p, color: r.color });
+    }
+  }
+
+  const lines = [];
+  let line = [];
+  let lineText = '';
+
+  function pushLine() {
+    if (!line.length) line.push({ text: ' ', color: (runs[0]?.color || '#ffffff') });
+    lines.push(line);
+    line = [];
+    lineText = '';
+  }
+
+  for (const tok of tokens) {
+    const testText = lineText + tok.text;
+    if (ctx.measureText(testText).width <= maxWidth) {
+      line.push(tok);
+      lineText = testText;
+      continue;
+    }
+
+    // If current line has some content, push and start new
+    if (lineText.trim().length) {
+      pushLine();
+
+      // try put token on new line
+      if (ctx.measureText(tok.text).width <= maxWidth) {
+        line.push(tok);
+        lineText = tok.text;
+        continue;
+      }
+      // token still too long -> split by chars
+    }
+
+    // token longer than maxWidth -> split char by char
+    let chunk = '';
+    for (const ch of tok.text) {
+      const t2 = chunk + ch;
+      if (ctx.measureText(t2).width <= maxWidth) {
+        chunk = t2;
+      } else {
+        if (chunk.length) {
+          line.push({ text: chunk, color: tok.color });
+          pushLine();
+        }
+        chunk = ch;
+      }
+    }
+    if (chunk.length) {
+      line.push({ text: chunk, color: tok.color });
+      lineText = chunk;
+    }
+  }
+
+  if (line.length) lines.push(line);
+  return lines;
+}
+
+
 let currentFontKey = 'tahoma';
 
 async function ensureFontLoaded() {
@@ -60,8 +184,9 @@ fontSelect.addEventListener('change', () => applyFont(fontSelect.value));
 
 function cleanLineText(line) {
   if (!line) return '';
-  if (line.length >= 8 && line[0] === '{' && line[7] === '}') return line.substring(8);
-  return line;
+  const clean = stripInvisibleChars(line);
+  if (clean.length >= 8 && clean[0] === '{' && clean[7] === '}') return clean.substring(8);
+  return clean;
 }
 
 function buildLineKeys(lines) {
@@ -78,6 +203,7 @@ function buildLineKeys(lines) {
 }
 
 function getBaseLineColor(rawLine) {
+  rawLine = stripInvisibleChars(rawLine);
   const defaultColor = '#ffffff';
   if (!rawLine || rawLine.length === 0) return defaultColor;
 
@@ -252,6 +378,7 @@ function saveColorToSelected() {
 }
 saveColorBtn.addEventListener('click', saveColorToSelected);
 
+
 function updatePreview(lines, keys) {
   previewLines.innerHTML = '';
 
@@ -267,16 +394,38 @@ function updatePreview(lines, keys) {
     row.className = 'chat-line';
     row.style.fontSize = fontSize + 'px';
 
-    const span = document.createElement('span');
-    span.className = 'chat-span';
-    span.style.color = finalColor;
+    const runs = parseInlineColors(displayText, finalColor);
+    const plain = runsToPlainText(runs);
+    const hasText = !!plain.trim();
 
-    const hasText = !!displayText.trim();
-    if (hasText && bgToggle.checked) span.style.background = colorPicker.value;
-    else span.style.background = 'transparent';
+    // If empty line, render a single transparent span (keeps layout)
+    if (!hasText) {
+      const span = document.createElement('span');
+      span.className = 'chat-span';
+      span.style.color = finalColor;
+      span.style.background = 'transparent';
+      span.textContent = ' ';
+      row.appendChild(span);
+      previewLines.appendChild(row);
+      continue;
+    }
 
-    span.textContent = hasText ? displayText : ' ';
-    row.appendChild(span);
+    for (let r = 0; r < runs.length; r++) {
+      const part = runs[r];
+      const segText = part.text.length ? part.text : ' ';
+
+      const span = document.createElement('span');
+      span.className = 'chat-span';
+      span.style.color = part.color;
+
+      // Background (same bg color for all parts)
+      if (segText.trim() && bgToggle.checked) span.style.background = colorPicker.value;
+      else span.style.background = 'transparent';
+
+      span.textContent = segText;
+      row.appendChild(span);
+    }
+
     previewLines.appendChild(row);
   }
 }
@@ -344,12 +493,12 @@ async function downloadImage(transparent) {
 
   const lineHeight = fontSize + 4;
   const paddingX = 4;
-  const paddingY = 2.5;
+  const paddingY = 2;
 
   const maxTextWidth = Math.max(220, (previewLines?.clientWidth || 900) - (paddingX * 2));
 
-  const segments = [];
-  let maxSegWidth = 0;
+  const visualLines = [];
+  let maxLineWidth = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
@@ -359,38 +508,45 @@ async function downloadImage(transparent) {
     const baseColor = getBaseLineColor(raw);
     const finalColor = customColorsByKey[key] || baseColor;
 
-    const hasText = !!originalText.trim();
-    const wrapped = wrapTextCanvas(ctx, originalText, maxTextWidth);
+    const runs = parseInlineColors(originalText, finalColor);
+    const plain = runsToPlainText(runs);
+    const hasBg = !!plain.trim() && bgToggle.checked && !transparent;
 
-    for (const seg of wrapped) {
-      const w = ctx.measureText(seg).width;
-      if (w > maxSegWidth) maxSegWidth = w;
+    const wrapped = wrapRunsCanvas(ctx, runs, maxTextWidth);
 
-      segments.push({
-        text: seg,
-        color: finalColor,
+    for (const wline of wrapped) {
+      let w = 0;
+      for (const run of wline) w += ctx.measureText(run.text).width;
+      if (w > maxLineWidth) maxLineWidth = w;
+
+      visualLines.push({
+        runs: wline,
         width: w,
-        hasBg: hasText && bgToggle.checked && !transparent
+        hasBg
       });
     }
   }
 
-  canvas.width = Math.ceil(maxSegWidth + (paddingX * 2) + 10);
-  canvas.height = Math.ceil((segments.length * lineHeight) + 10);
+  canvas.width = Math.ceil(maxLineWidth + (paddingX * 2) + 10);
+  canvas.height = Math.ceil((visualLines.length * lineHeight) + 10);
 
   ctx.font = `${fontSize}px ${canvasFontFamily}`;
   ctx.textBaseline = 'top';
 
   let y = 5;
 
-  for (const seg of segments) {
-    if (seg.hasBg && seg.text.trim()) {
+  for (const lineObj of visualLines) {
+    if (lineObj.hasBg && lineObj.width > 0) {
       ctx.fillStyle = colorPicker.value;
-      ctx.fillRect(5, y, seg.width + (paddingX * 2), lineHeight);
+      ctx.fillRect(5, y, lineObj.width + (paddingX * 2), lineHeight);
     }
 
-    ctx.fillStyle = seg.color;
-    ctx.fillText(seg.text, 5 + paddingX, y + paddingY);
+    let x = 5 + paddingX;
+    for (const run of lineObj.runs) {
+      ctx.fillStyle = run.color;
+      ctx.fillText(run.text, x, y + paddingY);
+      x += ctx.measureText(run.text).width;
+    }
 
     y += lineHeight;
   }

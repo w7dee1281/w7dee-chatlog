@@ -163,11 +163,9 @@ body{
   background:#1e1f22;
   overflow:hidden;
 }
-
-/* ✅ نفس padding-top حق textarea */
 .line-select-inner{
-  will-change:transform;
-  padding-top:14px;   /* نفس textarea padding-top */
+  will-change: transform;
+  padding-top: 14px; /* نفس padding-top للنص */
 }
 
 .line-check-row{

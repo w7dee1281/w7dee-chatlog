@@ -251,83 +251,6 @@ function saveColorToSelected() {
   updateAll();
 }
 saveColorBtn.addEventListener('click', saveColorToSelected);
-/* ===== Inline color tags [c=XXXXXX]...[/c] ===== */
-function parseInlineColorSegments(text) {
-  const segs = [];
-  if (!text) return segs;
-
-  const re = /\[c=([0-9A-Fa-f]{6})\]([\s\S]*?)\[\/c\]/g;
-  let last = 0;
-  let m;
-
-  while ((m = re.exec(text)) !== null) {
-    const before = text.slice(last, m.index);
-    if (before) segs.push({ text: before, colorHex: null });
-
-    segs.push({ text: m[2], colorHex: m[1].toUpperCase() });
-    last = m.index + m[0].length;
-  }
-
-  const tail = text.slice(last);
-  if (tail) segs.push({ text: tail, colorHex: null });
-
-  return segs;
-}
-
-function renderInlineColoredText(parentEl, text, baseColor) {
-  parentEl.textContent = '';
-
-  const segs = parseInlineColorSegments(text);
-
-  // لو ما فيه أي [c=] خل النص طبيعي
-  if (segs.length === 0) {
-    parentEl.textContent = text;
-    return;
-  }
-
-  for (const s of segs) {
-    const sp = document.createElement('span');
-    sp.textContent = s.text;
-    sp.style.color = s.colorHex ? ('#' + s.colorHex) : baseColor;
-    parentEl.appendChild(sp);
-  }
-}
-
-
-function wrapColoredSegmentsCanvas(ctx, segments, maxWidth) {
-  // segments: [{text, color}] where color is '#RRGGBB'
-  const lines = [];
-  let line = [];
-  let lineWidth = 0;
-
-  function pushLine() {
-    lines.push(line.length ? line : [{ text: ' ', color: '#ffffff' }]);
-    line = [];
-    lineWidth = 0;
-  }
-
-  for (const seg of segments) {
-    const parts = seg.text.split(/(\s+)/); // keep spaces
-
-    for (const part of parts) {
-      if (!part) continue;
-
-      const w = ctx.measureText(part).width;
-
-      if (lineWidth + w <= maxWidth || line.length === 0) {
-        line.push({ text: part, color: seg.color });
-        lineWidth += w;
-      } else {
-        pushLine();
-        line.push({ text: part, color: seg.color });
-        lineWidth = w;
-      }
-    }
-  }
-
-  if (line.length) pushLine();
-  return lines; // array of lines; each line is array of colored parts
-}
 
 function updatePreview(lines, keys) {
   previewLines.innerHTML = '';
@@ -346,28 +269,17 @@ function updatePreview(lines, keys) {
 
     const span = document.createElement('span');
     span.className = 'chat-span';
+    span.style.color = finalColor;
 
     const hasText = !!displayText.trim();
+    if (hasText && bgToggle.checked) span.style.background = colorPicker.value;
+    else span.style.background = 'transparent';
 
-    // الخلفية مثل ما هي عندك
-    if (hasText && bgToggle.checked) {
-      span.style.background = colorPicker.value;
-    } else {
-      span.style.background = 'transparent';
-    }
-
-    // ⭐ هنا الجديد: تلوين أجزاء من السطر
-    if (hasText) {
-      renderInlineColoredText(span, displayText, finalColor);
-    } else {
-      span.textContent = ' ';
-    }
-
+    span.textContent = hasText ? displayText : ' ';
     row.appendChild(span);
     previewLines.appendChild(row);
   }
 }
-
 
 function updateAll() {
   const lines = textInput.value.split('\n');
@@ -448,32 +360,19 @@ async function downloadImage(transparent) {
     const finalColor = customColorsByKey[key] || baseColor;
 
     const hasText = !!originalText.trim();
-    const inlineSegs = parseInlineColorSegments(originalText);
+    const wrapped = wrapTextCanvas(ctx, originalText, maxTextWidth);
 
-    const coloredSegs = inlineSegs.length
-    ? inlineSegs.map(s => ({
-      text: s.text,
-      color: s.colorHex ? ('#' + s.colorHex) : finalColor
-     }))
-  :   [{ text: originalText, color: finalColor }];
+    for (const seg of wrapped) {
+      const w = ctx.measureText(seg).width;
+      if (w > maxSegWidth) maxSegWidth = w;
 
-    const wrappedLines = wrapColoredSegmentsCanvas(ctx, coloredSegs, maxTextWidth);
-
-for (const lineParts of wrappedLines) {
-  const w = lineParts.reduce(
-    (acc, p) => acc + ctx.measureText(p.text).width,
-    0
-  );
-
-  if (w > maxSegWidth) maxSegWidth = w;
-
-  segments.push({
-    parts: lineParts,
-    width: w,
-    hasBg: hasText && bgToggle.checked && !transparent
-  });
-}
-
+      segments.push({
+        text: seg,
+        color: finalColor,
+        width: w,
+        hasBg: hasText && bgToggle.checked && !transparent
+      });
+    }
   }
 
   canvas.width = Math.ceil(maxSegWidth + (paddingX * 2) + 10);
@@ -485,18 +384,13 @@ for (const lineParts of wrappedLines) {
   let y = 5;
 
   for (const seg of segments) {
-    if (seg.hasBg && seg.parts && seg.parts.some(p => p.text.trim())) {
+    if (seg.hasBg && seg.text.trim()) {
       ctx.fillStyle = colorPicker.value;
       ctx.fillRect(5, y, seg.width + (paddingX * 2), lineHeight);
     }
 
-   let x = 5 + paddingX;
-for (const p of seg.parts) {
-  ctx.fillStyle = p.color;
-  ctx.fillText(p.text, x, y + paddingY);
-  x += ctx.measureText(p.text).width;
-}
-
+    ctx.fillStyle = seg.color;
+    ctx.fillText(seg.text, 5 + paddingX, y + paddingY);
 
     y += lineHeight;
   }

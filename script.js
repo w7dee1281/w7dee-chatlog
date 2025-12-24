@@ -60,9 +60,18 @@ fontSelect.addEventListener('change', () => applyFont(fontSelect.value));
 
 function cleanLineText(line) {
   if (!line) return '';
-  if (line.length >= 8 && line[0] === '{' && line[7] === '}') return line.substring(8);
+
+  // ✅ شيل {FFFFFF} لو موجودة
+  if (line.length >= 8 && line[0] === '{' && line[7] === '}') {
+    line = line.substring(8);
+  }
+
+  // ✅ شيل التاريخ والوقت من بداية السطر لو موجود
+  line = line.replace(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+/, '');
+
   return line;
 }
+
 
 function buildLineKeys(lines) {
   const counts = new Map();

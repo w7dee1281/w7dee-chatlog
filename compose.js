@@ -137,7 +137,7 @@ function getBaseLineColor(rawLine) {
   if (lowerLine.includes('[radio]')) return '#FEE58F';
   if (lowerLine.includes('whispers')) return '#eda841';
 
-  const trimmed = cleanLine.trim();
+  const trimmed = cleanLineText(cleanLine).trim();
   if (!trimmed) return defaultColor;
 
   const first = trimmed[0];
